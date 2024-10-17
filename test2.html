@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BMI Result Form</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      background: url('mountain.jpg') no-repeat center center fixed;
+      background-size: cover;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      animation: fadeInBackground 2s ease-in-out;
+    }
+
+    @keyframes fadeInBackground {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .form-container {
+      background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent white background */
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      max-width: 400px;
+      width: 100%;
+      animation: fadeInForm 1s ease-in-out;
+      transition: box-shadow 0.3s ease;
+    }
+
+    .form-container:hover {
+      box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+    }
+
+    @keyframes fadeInForm {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .form-group label {
+      font-weight: bold;
+      color: #333;
+    }
+
+    input:focus {
+      outline: none;
+      box-shadow: 0 0 8px rgba(0, 123, 255, 0.5);
+      transition: box-shadow 0.3s ease;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background-color: #007bff;
+      border: none;
+      padding: 10px;
+      transition: all 0.3s ease;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056b3;
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+    }
+
+    #message {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 14px;
+      opacity: 0;
+      animation: fadeInMessage 0.5s ease-in-out forwards;
+    }
+
+    @keyframes fadeInMessage {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/10.14.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyCDmDhnjeX9eUq3u7WMombKIumQFO1kUyk",
+      authDomain: "bmifitness-9be1e.firebaseapp.com",
+      databaseURL: "https://bmifitness-9be1e-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "bmifitness-9be1e",
+      storageBucket: "bmifitness-9be1e.appspot.com",
+      messagingSenderId: "32069351026",
+      appId: "1:32069351026:web:a721056f7c4d0f3fe534eb"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    function fetchDataAndSubmit() {
+      const heightRef = ref(database, "person/height");
+      const weightRef = ref(database, "person/weight");
+      
+      let height, weight;
+
+      onValue(heightRef, (snapshot) => {
+        if (snapshot.exists()) {
+          height = snapshot.val();
+          document.getElementById("heightInput").value = height;
+        } else {
+          console.log("No height data available");
+        }
+      }, (error) => {
+        console.error("Error fetching height:", error);
+      });
+
+      onValue(weightRef, (snapshot) => {
+        if (snapshot.exists()) {
+          weight = snapshot.val();
+          document.getElementById("weightInput").value = weight;
+
+          const bmi = calculateBMI(height, weight);
+          document.getElementById("bmiInput").value = bmi;
+
+          if (height && weight) {
+            document.getElementById("form").dispatchEvent(new Event('submit'));
+          }
+        } else {
+          console.log("No weight data available");
+        }
+      }, (error) => {
+        console.error("Error fetching weight:", error);
+      });
+    }
+
+    function calculateBMI(height, weight) {
+      const heightInMeters = height / 100;
+      const bmi = weight / (heightInMeters * heightInMeters);
+      return bmi.toFixed(2);
+    }
+
+    function submitForm(event) {
+      event.preventDefault();
+
+      const clientName = document.getElementById("clientName").value;
+      const height = document.getElementById("heightInput").value;
+      const weight = document.getElementById("weightInput").value;
+      const bmi = document.getElementById("bmiInput").value;
+
+      if (!clientName) {
+        alert("Please enter client name");
+        return;
+      }
+
+      const formData = {
+        "Client Name": clientName,
+        "Height": height,
+        "Weight": weight,
+        "BMI": bmi
+      };
+
+      fetch("https://script.google.com/macros/s/AKfycbzD_1o-cF2Ir7HVPHt1jGIEmGclf2mnPgb0zbcGnOrnNn1Icuixb2mw0jTBOtNDPVEQ/exec", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: Object.keys(formData).map(key => `${key}=${formData[key]}`).join("&")
+      })
+      .then((response) => {
+        if (!response.ok) {
+          return response.text().then(text => {
+            throw new Error(`Failed to submit the form. Response: ${text}`);
+          });
+        }
+        return response.text();
+      })
+      .then((data) => {
+        const messageDiv = document.getElementById("message");
+        messageDiv.textContent = "Data submitted successfully!";
+        messageDiv.style.display = "block";
+        messageDiv.style.backgroundColor = "green";
+        messageDiv.style.color = "beige";
+        document.getElementById("form").reset();
+
+        setTimeout(() => {
+          messageDiv.textContent = "";
+          messageDiv.style.display = "none";
+        }, 2600);
+      })
+      .catch ((error) => {
+        const messageDiv = document.getElementById("message");
+        messageDiv.textContent = "Failed to submit the form. Please try again.";
+        messageDiv.style.display = "block";
+        messageDiv.style.backgroundColor = "red";
+        messageDiv.style.color = "white";
+
+        setTimeout(() => {
+          messageDiv.textContent = "";
+          messageDiv.style.display = "none";
+        }, 2600);
+      });
+    }
+
+    document.getElementById("form").addEventListener("submit", submitForm);
+    fetchDataAndSubmit();
+  </script>
+</head>
+<body>
+  <div class="form-container">
+    <h1>BMI Result Form</h1>
+    <form id="form">
+      <div class="form-group">
+        <label for="clientName">Client Name:</label>
+        <input type="text" id="clientName" name="clientName" class="form-control" required>
+      </div>
+      <div class="form-group">
+        <label for="heightInput">Height (cm):</label>
+        <input type="number" id="heightInput" name="heightInput" class="form-control" readonly>
+      </div>
+      <div class="form-group">
+        <label for="weightInput">Weight (kg):</label>
+        <input type="number" id="weightInput" name="weightInput" class="form-control" readonly>
+      </div>
+      <div class="form-group">
+        <label for="bmiInput">BMI:</label>
+        <input type="number" id="bmiInput" name="bmiInput" class="form-control" readonly>
+      </div>
+      <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+    <div id="message" style="display: none;"></div>
+  </div>
+</body>
+</html>
